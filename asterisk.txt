@@ -1,3 +1,6 @@
+Labo 1
+el labo 2 esta abajo
+
 1. Actualizar el sistema:
 Antes de comenzar, asegúrate de que tu sistema esté actualizado:
 $ sudo apt-get update
@@ -170,7 +173,53 @@ Contraseña: 6002password
 Asegúrate de que ambos softphones estén conectados y registrados en Asterisk.
 
 4. Realizar una llamada de prueba:
-Intenta realizar una llamada desde la extensión 6001 a la 6002 y viceversa. Si todo está configurado correctamente, las llamadas deberían conectarse sin problemas.
+Intenta realizar una llamada desde la extensión 6001 a la 6002 y viceversa. Si todo está configurado correctamente, las llamadas deberían conectarse sin problemas
+
+
+
+
+labo 2
+
+
+$ sudo nano /etc/asterisk/extensions.conf
+ [ivr-menu]
+exten => s,1,Answer()
+exten => s,n,Background(custom/welcome)  ; Reproduce el mensaje de bienvenida
+exten => s,n,WaitExten(10)               ; Espera 10 segundos para la entrada del usuario
+
+; Opción 1: Llamar a la extensión 6001
+exten => 1,1,Dial(PJSIP/6001)
+exten => 1,n,Hangup()
+
+; Opción 2: Llamar a la extensión 6002
+exten => 2,1,Dial(PJSIP/6002)
+exten => 2,n,Hangup()
+
+; Opción 3: Repite el menú
+exten => 3,1,Goto(ivr-menu,s,1)
+
+; Si no se selecciona una opción válida
+exten => i,1,Playback(pbx-invalid)
+exten => i,n,Goto(ivr-menu,s,1)
+
+; Si no se selecciona ninguna opción (timeout)
+exten => t,1,Playback(vm-goodbye)
+exten => t,n,Hangup()
+
+$ sudo nano /etc/asterisk/extensions.conf
+ [internal]
+exten => _X.,1,Goto(ivr-menu,s,1)
+
+$ sudo asterisk -rvvv
+CLI> dialplan reload
+
+$ sudo mkdir -p /var/lib/asterisk/sounds/custom
+$ sudo chown -R asterisk:asterisk /var/lib/asterisk/sounds/custom
+$ sudo chmod -R 755 /var/lib/asterisk/sounds/custom
+$ sudo apt-get install sox
+$ sox input-file.mp3 -r 8000 -c 1 -b 16 /var/lib/asterisk/sounds/custom/welcome.wav
+$ sudo chown asterisk:asterisk /var/lib/asterisk/sounds/custom/welcome.wav
+$ sudo chmod 644 /var/lib/asterisk/sounds/custom/welcome.wav
 
 5. Monitorear la actividad en la consola de Asterisk:
 Mientras realizas las pruebas, puedes observar la actividad y depurar cualquier problema desde la consola de Asterisk:
