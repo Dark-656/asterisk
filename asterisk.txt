@@ -1,0 +1,178 @@
+1. Actualizar el sistema:
+Antes de comenzar, asegúrate de que tu sistema esté actualizado:
+$ sudo apt-get update
+$ sudo apt-get upgrade
+2. Instalar las dependencias necesarias:
+Asterisk requiere varias herramientas y bibliotecas. Instálalas con el siguiente comando:
+$ sudo apt-get install wget build-essential subversion git libssl-dev libncurses5-dev libnewt-dev libxml2-dev libsqlite3-dev uuid-dev libjansson-dev libsqlite3-dev libcurl4-openssl-dev libedit-dev pkg-config
+3. Descargar e instalar Asterisk:
+Primero, vamos a descargar la versión más reciente de Asterisk desde su sitio oficial:
+
+$ cd /usr/src/
+$ sudo wget http://downloads.asterisk.org/pub/telephony/asterisk/asterisk-20-current.tar.gz
+$ sudo tar zxvf asterisk-20-current.tar.gz
+$ cd asterisk-20*/
+4. Instalar las dependencias adicionales (opcional):
+Asterisk tiene un script que instala las dependencias adicionales necesarias para compilar:
+$ sudo contrib/scripts/install_prereq install
+5. Configurar, compilar e instalar Asterisk:
+Configura Asterisk:
+$ sudo ./configure
+Selecciona los módulos a instalar usando menuselect:
+$ sudo make menuselect
+En esta interfaz puedes elegir módulos adicionales si los necesitas. Generalmente, puedes dejar la configuración por defecto y salir con "Save & Exit".
+Compila e instala Asterisk:
+$ sudo make
+$ sudo make install
+6. Instalar archivos de configuración y servicios:
+Instala los archivos de configuración de ejemplo:
+$ sudo make samples
+Instala los scripts de inicio para que Asterisk se ejecute como un servicio:
+$ sudo make config
+$ sudo ldconfig
+7. Crear un usuario para ejecutar Asterisk (opcional pero recomendado):
+Crea un usuario dedicado para Asterisk:
+$ sudo adduser --system --group --home /var/lib/Asterisk asterisk
+Cambia la propiedad de los directorios necesarios a este usuario:
+$ sudo chown -R asterisk:asterisk /var/run/asterisk
+$ sudo chown -R asterisk:asterisk /var/lib/asterisk
+$ sudo chown -R asterisk:asterisk /var/log/asterisk
+$ sudo chown -R asterisk:asterisk /var/spool/asterisk
+$ sudo chown -R asterisk:asterisk /etc/asterisk
+Edita el archivo /etc/default/asterisk para asegurarte de que Asterisk se ejecute como este usuario:
+$ sudo nano /etc/default/asterisk
+Cambia o asegúrate de que las siguientes líneas existan:
+AST_USER="asterisk"
+AST_GROUP="asterisk"
+8. Iniciar el servicio Asterisk:
+Inicia y habilita Asterisk para que se ejecute al iniciar el sistema:
+$ sudo systemctl start asterisk
+$ sudo systemctl enable asterisk
+9. Verificar la instalación:
+Conéctate a la consola de Asterisk para verificar que todo esté en orden:
+$ sudo asterisk -rvvv
+Esto te llevará a la consola de Asterisk donde puedes ejecutar comandos para gestionar y monitorear el sistema.
+10. Verificar el estado del servicio Asterisk:
+Usa el siguiente comando para verificar el estado del servicio de Asterisk:
+$ sudo systemctl status asterisk
+Este comando te mostrará si el servicio está activo (active (running)) o si está detenido (inactive o failed). También muestra registros recientes del servicio.
+2. Conectarte a la consola de Asterisk:
+La consola de Asterisk te permite verificar su funcionamiento interno y ejecutar comandos para administrarlo:
+$ sudo asterisk -rvvv
+Si ves el prompt *CLI>, significa que Asterisk está en funcionamiento. Desde aquí, puedes ejecutar varios comandos como:
+CLI> core show channels para ver las llamadas activas.
+CLI> sip show peers (para chan_sip) o CLI> pjsip show endpoints (para pjsip) para ver el estado de las extensiones SIP.
+3. Verificar que el puerto SIP esté escuchando:
+
+4. Revisar los registros de Asterisk:
+Los archivos de registro de Asterisk pueden darte información detallada sobre su funcionamiento:
+$ sudo tail -f /var/log/asterisk/messages
+Este comando mostrará en tiempo real los mensajes registrados por Asterisk.
+5. Verificar la carga de los módulos:
+Desde la consola de Asterisk, puedes verificar que todos los módulos necesarios estén cargados correctamente:
+CLI> module show like sip
+Si necesitas alguna ayuda adicional para interpretar los resultados o para seguir configurando Asterisk, estoy aquí para ayudarte.
+Configurar el protocolo SIP (PJSIP) en Asterisk:
+a) Configurar pjsip.conf:
+El archivo principal para la configuración de SIP en Asterisk es pjsip.conf. Aquí es donde configuraremos las extensiones y los parámetros de transporte.
+Abre el archivo pjsip.conf:
+$ sudo nano /etc/asterisk/pjsip.conf
+A continuación, agrega la configuración básica para dos extensiones SIP:
+; Configuración de transporte
+
+
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0
+
+; Extensión 6001
+[6001]
+type=endpoint
+context=internal
+disallow=all
+allow=ulaw
+auth=auth6001
+aors=6001
+
+[auth6001]
+type=auth
+auth_type=userpass
+password=6001password
+username=6001
+
+[6001]
+type=aor
+max_contacts=1
+
+; Extensión 6002
+[6002]
+type=endpoint
+context=internal
+disallow=all
+allow=ulaw
+auth=auth6002
+aors=6002
+
+[auth6002]
+type=auth
+auth_type=userpass
+password=6002password
+username=6002
+
+[6002]
+type=aor
+max_contacts=1
+
+
+
+
+
+transport-udp: Configura el transporte para SIP sobre UDP.
+endpoint: Define la configuración de cada extensión.
+auth: Configura las credenciales de autenticación para cada extensión.
+aor: Define cómo Asterisk gestiona las direcciones de las extensiones.
+b) Configurar extensions.conf:
+Este archivo define cómo se manejan las llamadas dentro de Asterisk. Vamos a crear un contexto llamado internal para que las extensiones puedan llamarse entre sí.
+Abre el archivo extensions.conf:
+$ sudo nano /etc/asterisk/extensions.conf
+Añade la siguiente configuración para las extensiones:
+
+exten => 6001,1,Dial(PJSIP/6001)
+exten => 6002,1,Dial(PJSIP/6002)
+
+Este contexto permite que las extensiones 6001 y 6002 se llamen mutuamente.
+2. Recargar la configuración en Asterisk:
+Después de realizar estos cambios, recarga la configuración de Asterisk para que los nuevos ajustes se apliquen:
+Conéctate a la consola de Asterisk:
+$ sudo asterisk -rvvv
+Luego, ejecuta:
+CLI> pjsip reload
+Puedes verificar que las extensiones estén configuradas correctamente con:
+CLI> pjsip show endpoints
+3. Probar la configuración con softphones:
+a) Instalar un softphone:
+En este paso, debes instalar un softphone en dos dispositivos. Algunas opciones populares son:
+Zoiper
+Linphone
+MicroSIP (Windows)
+b) Configurar las extensiones en los softphones:
+
+Extensión 6001:
+Servidor/Proxy: La dirección IP de tu servidor Asterisk.
+Usuario: 6001
+Contraseña: 6001password
+Extensión 6002:
+
+Servidor/Proxy: La dirección IP de tu servidor Asterisk.
+Usuario: 6002
+Contraseña: 6002password
+Asegúrate de que ambos softphones estén conectados y registrados en Asterisk.
+
+4. Realizar una llamada de prueba:
+Intenta realizar una llamada desde la extensión 6001 a la 6002 y viceversa. Si todo está configurado correctamente, las llamadas deberían conectarse sin problemas.
+
+5. Monitorear la actividad en la consola de Asterisk:
+Mientras realizas las pruebas, puedes observar la actividad y depurar cualquier problema desde la consola de Asterisk:
+*CLI> pjsip set logger on
+Esto te permitirá ver los mensajes SIP que pasan por el sistema, útil para verificar que todo esté funcionando como se espera.
